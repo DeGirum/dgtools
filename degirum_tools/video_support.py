@@ -9,7 +9,7 @@
 
 import time
 import cv2, urllib, numpy as np
-from contextlib import contextmanageraa
+from contextlib import contextmanager
 from pathlib import Path
 from . import environment as env
 from .ui_support import Progress
@@ -42,7 +42,6 @@ class VideoCaptureGst:
             raise Exception(f"GStreamer pipeline failed to start: {pipeline_str}")
 
         self.running = True
-
 
     def read(self):
         env.import_optional_package("gi")

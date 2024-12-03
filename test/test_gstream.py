@@ -1,5 +1,6 @@
 from degirum_tools.video_support import open_video_stream
 
+
 def test_opencv_video_source():
     # Test with a sample video file (ensure the file exists for the test)
     video_file = "sample.mp4"  # Replace with an actual file path
