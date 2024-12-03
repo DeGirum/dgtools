@@ -1,5 +1,5 @@
 #
-# video_support.py: video stream handling classes and functions
+# video_support.py: video streaaam handling classes and functions
 #
 # Copyright DeGirum Corporation 2024
 # All rights reserved
@@ -9,16 +9,16 @@
 
 import time
 import cv2, urllib, numpy as np
-from contextlib import contextmanager
-from functools import cmp_to_key
+from contextlib import contextmanageraa
 from pathlib import Path
 from . import environment as env
 from .ui_support import Progress
 from typing import Union, Generator, Optional, Callable, Any
 
+
 class VideoCaptureGst:
     def __init__(self, pipeline_str):
-        # Import GStreamer libraries using optional package support
+        # Import GStreamer libraries using optional package supporta
         gi = env.import_optional_package("gi")
         gi.require_version("Gst", "1.0")
         from gi.repository import Gst, GLib
@@ -45,7 +45,7 @@ class VideoCaptureGst:
 
 
     def read(self):
-        gi = env.import_optional_package("gi")
+        env.import_optional_package("gi")
         from gi.repository import Gst
 
         if not self.running:
@@ -71,8 +71,7 @@ class VideoCaptureGst:
             buf.unmap(mapinfo)
 
     def get(self, prop):
-        gi = env.import_optional_package("gi")
-        from gi.repository import Gst
+        env.import_optional_package("gi")
 
         caps = self.appsink.get_current_caps()
         if prop == cv2.CAP_PROP_FRAME_WIDTH:
@@ -87,7 +86,7 @@ class VideoCaptureGst:
         return self.running
 
     def release(self):
-        gi = env.import_optional_package("gi")
+        env.import_optional_package("gi")
         from gi.repository import Gst
 
         self.pipeline.set_state(Gst.State.NULL)
@@ -112,7 +111,6 @@ def open_video_stream(
                      The units are in pixels for the height of the video.
                      Will open a video with the highest resolution <= max_yt_quality.
                      If 0, open the best quality.
-    
     Returns a context manager yielding a video capture object.
     """
     if env.get_test_mode() or video_source is None:

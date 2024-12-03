@@ -1,5 +1,3 @@
-import cv2
-from pathlib import Path
 from degirum_tools.video_support import open_video_stream
 
 def test_opencv_video_source():
@@ -10,6 +8,7 @@ def test_opencv_video_source():
         ret, frame = stream.read()
         assert ret, "Failed to read a frame"
         assert frame is not None, "Frame is None"
+
 
 def test_gstreamer_pipeline():
     # Test with a sample GStreamer pipeline
@@ -23,10 +22,11 @@ def test_gstreamer_pipeline():
     except ImportError:
         print("GStreamer not available, skipping test")
 
+
 def test_invalid_gstreamer_pipeline():
     invalid_pipeline = "invalid_pipeline ! appsink"
     try:
-        with open_video_stream(invalid_pipeline) as stream:
+        with open_video_stream(invalid_pipeline):
             pass  # This should not execute if the pipeline is invalid
     except Exception as e:
         # Match specific error messages
@@ -45,6 +45,7 @@ def test_youtube_url():
             assert stream.isOpened(), "Failed to open YouTube URL"
     except Exception as e:
         print(f"Error with YouTube test: {e}")
+
 
 if __name__ == "__main__":
     print("Running tests...")
