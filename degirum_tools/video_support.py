@@ -1,5 +1,5 @@
 #
-# video_support.py: video streaaam handling classes and functions
+# video_support.py: video stream handling classes and functions
 #
 # Copyright DeGirum Corporation 2024
 # All rights reserved
@@ -8,17 +8,19 @@
 #
 
 import time
-import cv2, urllib, numpy as np
+import cv2, numpy as np
 from contextlib import contextmanager
+from functools import cmp_to_key
 from pathlib import Path
 from . import environment as env
 from .ui_support import Progress
-from typing import Union, Generator, Optional, Callable, Any
+from typing import Union, Generator, Optional, Callable, Any, Tuple
+from urllib.parse import urlparse
 
 
 class VideoCaptureGst:
     def __init__(self, pipeline_str):
-        # Import GStreamer libraries using optional package supporta
+        # Import GStreamer libraries using optional package support
         gi = env.import_optional_package("gi")
         gi.require_version("Gst", "1.0")
         from gi.repository import Gst, GLib
@@ -43,8 +45,9 @@ class VideoCaptureGst:
 
         self.running = True
 
+
     def read(self):
-        env.import_optional_package("gi")
+        gi = env.import_optional_package("gi")
         from gi.repository import Gst
 
         if not self.running:
@@ -64,13 +67,14 @@ class VideoCaptureGst:
             return False, None
 
         try:
-            frame = np.ndarray((height, width, 3), buffer=mapinfo.data, dtype=np.uint8)
+            frame: np.ndarray = np.ndarray((height, width, 3), buffer=mapinfo.data, dtype=np.uint8)
             return True, frame
         finally:
             buf.unmap(mapinfo)
 
     def get(self, prop):
-        env.import_optional_package("gi")
+        gi = env.import_optional_package("gi")
+        from gi.repository import Gst
 
         caps = self.appsink.get_current_caps()
         if prop == cv2.CAP_PROP_FRAME_WIDTH:
@@ -85,7 +89,7 @@ class VideoCaptureGst:
         return self.running
 
     def release(self):
-        env.import_optional_package("gi")
+        gi = env.import_optional_package("gi")
         from gi.repository import Gst
 
         self.pipeline.set_state(Gst.State.NULL)
@@ -94,7 +98,7 @@ class VideoCaptureGst:
 
 @contextmanager
 def open_video_stream(
-    video_source: Union[int, str, Path, None] = None, max_yt_quality: int = 0
+    video_source: Union[int, str, Path, None, cv2.VideoCapture, VideoCaptureGst], max_yt_quality: int = 0
 ) -> Generator[Union[cv2.VideoCapture, "VideoCaptureGst"], None, None]:
     """
     Open a video stream, returning a context manager.
@@ -110,6 +114,7 @@ def open_video_stream(
                      The units are in pixels for the height of the video.
                      Will open a video with the highest resolution <= max_yt_quality.
                      If 0, open the best quality.
+
     Returns a context manager yielding a video capture object.
     """
     if env.get_test_mode() or video_source is None:
@@ -120,13 +125,13 @@ def open_video_stream(
     if isinstance(video_source, Path):
         video_source = str(video_source)
 
-    if isinstance(video_source, str) and urllib.parse.urlparse(
-        video_source
-    ).hostname in (
-        "www.youtube.com",
-        "youtube.com",
-        "youtu.be",
-    ):  # Handle YouTube video source
+    # Handle YouTube video source
+    if isinstance(video_source, str) and urlparse(video_source).hostname in (
+    "www.youtube.com",
+    "youtube.com",
+    "youtu.be",
+):
+
         import pafy
 
         if max_yt_quality == 0:
@@ -168,57 +173,7 @@ def open_video_stream(
 
     # Check if video_source is a GStreamer pipeline
     if isinstance(video_source, str) and ("!" in video_source or "filesrc" in video_source):
-        gi = env.import_optional_package("gi")
-        gi.require_version("Gst", "1.0")
-        from gi.repository import Gst
-
-        class VideoCaptureGst:
-            def __init__(self, pipeline_str):
-                Gst.init(None)
-                self.pipeline = Gst.parse_launch(pipeline_str)
-                self.appsink = self.pipeline.get_by_name("sink")
-                self.appsink.set_property("emit-signals", True)
-                self.pipeline.set_state(Gst.State.PLAYING)
-                self.running = True
-
-            def read(self):
-                sample = self.appsink.emit("pull-sample")
-                if not sample:
-                    self.running = False
-                    return False, None
-                buf = sample.get_buffer()
-                caps = sample.get_caps()
-                width = caps.get_structure(0).get_value("width")
-                height = caps.get_structure(0).get_value("height")
-                success, mapinfo = buf.map(Gst.MapFlags.READ)
-                if not success:
-                    return False, None
-                try:
-                    frame = np.ndarray((height, width, 3), buffer=mapinfo.data, dtype=np.uint8)
-                    return True, frame
-                finally:
-                    buf.unmap(mapinfo)
-
-            def get(self, prop):
-                caps = self.appsink.get_current_caps()
-                if prop == cv2.CAP_PROP_FRAME_WIDTH:
-                    return caps.get_structure(0).get_value("width")
-                elif prop == cv2.CAP_PROP_FRAME_HEIGHT:
-                    return caps.get_structure(0).get_value("height")
-                elif prop == cv2.CAP_PROP_FPS:
-                    return caps.get_structure(0).get_value("framerate")
-                return None
-
-            def isOpened(self):
-                return self.running
-
-            def release(self):
-                self.pipeline.set_state(Gst.State.NULL)
-                self.running = False
-
         stream = VideoCaptureGst(video_source)
-    else:
-        stream = cv2.VideoCapture(video_source)  # Handle other sources with OpenCV
 
     if not stream.isOpened():
         raise Exception(f"Error opening '{video_source}' video stream")
@@ -231,8 +186,9 @@ def open_video_stream(
         stream.release()
 
 
+
 def get_video_stream_properties(
-    video_source: Union[int, str, Path, None, cv2.VideoCapture]
+    video_source: Union[int, str, Path, None, cv2.VideoCapture, VideoCaptureGst]
 ) -> tuple:
     """
     Get video stream properties
@@ -244,12 +200,24 @@ def get_video_stream_properties(
         tuple of (width, height, fps)
     """
 
-    def get_props(stream: cv2.VideoCapture) -> tuple:
-        return (
-            int(stream.get(cv2.CAP_PROP_FRAME_WIDTH)),
-            int(stream.get(cv2.CAP_PROP_FRAME_HEIGHT)),
-            stream.get(cv2.CAP_PROP_FPS),
-        )
+    def get_props(stream: Union[cv2.VideoCapture, VideoCaptureGst]) -> Tuple[int, int, float]:
+        """
+        Get properties for cv2.VideoCapture or VideoCaptureGst
+        """
+        if isinstance(stream, cv2.VideoCapture):
+            return (
+                int(stream.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                int(stream.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                stream.get(cv2.CAP_PROP_FPS),
+            )
+        elif isinstance(stream, VideoCaptureGst):
+            return (
+                int(stream.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                int(stream.get(cv2.CAP_PROP_FRAME_HEIGHT)),
+                float(stream.get(cv2.CAP_PROP_FPS)),
+            )
+        else:
+            raise ValueError("Unsupported stream type")
 
     if isinstance(video_source, cv2.VideoCapture):
         return get_props(video_source)
@@ -259,7 +227,7 @@ def get_video_stream_properties(
 
 
 def video_source(
-    stream: cv2.VideoCapture, fps: Optional[float] = None
+    stream: Union[cv2.VideoCapture, VideoCaptureGst], fps: Optional[float] = None
 ) -> Generator[np.ndarray, None, None]:
     """Generator function, which returns video frames captured from given video stream.
     Useful to pass to model batch_predict().
