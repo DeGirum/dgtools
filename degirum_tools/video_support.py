@@ -10,7 +10,6 @@
 import time
 import cv2, numpy as np
 from contextlib import contextmanager
-from functools import cmp_to_key
 from pathlib import Path
 from . import environment as env
 from .ui_support import Progress
@@ -45,9 +44,8 @@ class VideoCaptureGst:
 
         self.running = True
 
-
     def read(self):
-        gi = env.import_optional_package("gi")
+        env.import_optional_package("gi")
         from gi.repository import Gst
 
         if not self.running:
@@ -73,8 +71,7 @@ class VideoCaptureGst:
             buf.unmap(mapinfo)
 
     def get(self, prop):
-        gi = env.import_optional_package("gi")
-        from gi.repository import Gst
+        env.import_optional_package("gi")
 
         caps = self.appsink.get_current_caps()
         if prop == cv2.CAP_PROP_FRAME_WIDTH:
@@ -89,7 +86,7 @@ class VideoCaptureGst:
         return self.running
 
     def release(self):
-        gi = env.import_optional_package("gi")
+        env.import_optional_package("gi")
         from gi.repository import Gst
 
         self.pipeline.set_state(Gst.State.NULL)
@@ -130,7 +127,7 @@ def open_video_stream(
     "www.youtube.com",
     "youtube.com",
     "youtu.be",
-):
+    ):
 
         import pafy
 
@@ -189,13 +186,11 @@ def open_video_stream(
 
 def get_video_stream_properties(
     video_source: Union[int, str, Path, None, cv2.VideoCapture, VideoCaptureGst]
-) -> tuple:
+    ) -> tuple:
     """
     Get video stream properties
-
     Args:
         video_source - VideoCapture object or argument of open_video_stream() function
-
     Returns:
         tuple of (width, height, fps)
     """

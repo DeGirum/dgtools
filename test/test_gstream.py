@@ -1,5 +1,3 @@
-import cv2
-from pathlib import Path
 from degirum_tools.video_support import open_video_stream
 
 
@@ -18,7 +16,7 @@ def test_gstreamer_pipeline():
 def test_invalid_gstreamer_pipeline():
     invalid_pipeline = "invalid_pipeline ! appsink"
     try:
-        with open_video_stream(invalid_pipeline) as stream:
+        with open_video_stream(invalid_pipeline):
             pass  # This should not execute if the pipeline is invalid
     except Exception as e:
         # Match specific error messages
