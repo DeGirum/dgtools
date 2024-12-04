@@ -123,12 +123,7 @@ def open_video_stream(
         video_source = str(video_source)
 
     # Handle YouTube video source
-    if isinstance(video_source, str) and urlparse(video_source).hostname in (
-    "www.youtube.com",
-    "youtube.com",
-    "youtu.be",
-    ):
-
+    if isinstance(video_source, str) and urlparse(video_source).hostname in ("www.youtube.com", "youtube.com", "youtu.be"):
         import pafy
 
         if max_yt_quality == 0:
@@ -183,10 +178,7 @@ def open_video_stream(
         stream.release()
 
 
-
-def get_video_stream_properties(
-    video_source: Union[int, str, Path, None, cv2.VideoCapture, VideoCaptureGst]
-    ) -> tuple:
+def get_video_stream_properties(video_source: Union[int, str, Path, None, cv2.VideoCapture, VideoCaptureGst]) -> tuple:
     """
     Get video stream properties
     Args:
@@ -291,10 +283,8 @@ class VideoWriter:
     """
     H264 mp4 video stream writer class
     """
-
     def __init__(self, fname: str, w: int = 0, h: int = 0, fps: float = 30.0):
         """Create, open, and return video stream writer
-
         Args:
             fname: filename to save video
             w, h: frame width/height (optional, can be zero to deduce on first frame)
@@ -447,5 +437,4 @@ def video2jpegs(
             cv2.imwrite(fname, img)
             progress.step()
             fi += 1
-
-        return fi
+    return fi
