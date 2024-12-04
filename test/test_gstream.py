@@ -13,6 +13,7 @@ def test_gstreamer_pipeline():
     except ImportError:
         print("GStreamer not available, skipping test")
 
+
 def test_invalid_gstreamer_pipeline():
     invalid_pipeline = "invalid_pipeline ! appsink"
     try:
