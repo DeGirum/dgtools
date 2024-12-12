@@ -4,7 +4,7 @@
 # Copyright DeGirum Corporation 2024
 # All rights reserved
 #
-# Implements classes and functions to handle video streams for capturing and saving
+# Implements classes and functions to handle video streams for capturing & saving
 #
 
 import time
@@ -47,7 +47,6 @@ class VideoCaptureGst:
     def read(self):
         env.import_optional_package("gi")
         from gi.repository import Gst
-
         if not self.running:
             return False, None
         sample = self.appsink.emit("pull-sample")
@@ -59,7 +58,7 @@ class VideoCaptureGst:
         caps = sample.get_caps()
         width = caps.get_structure(0).get_value("width")
         height = caps.get_structure(0).get_value("height")
-
+        print(width, height)
         success, mapinfo = buf.map(Gst.MapFlags.READ)
         if not success:
             return False, None
@@ -70,16 +69,33 @@ class VideoCaptureGst:
         finally:
             buf.unmap(mapinfo)
 
-    def get(self, prop):
+    def get(self, prop: int):
         env.import_optional_package("gi")
+        from gi.repository import Gst
 
-        caps = self.appsink.get_current_caps()
+        pad = self.appsink.get_static_pad("sink")
+        caps = pad.get_current_caps()
+        if not caps:
+            return None
+
+        structure = caps.get_structure(0)
+        framerate = structure.get_fraction('framerate')
+
+        # Convert Gst.Fraction to a Python float or tuple
+        if framerate:
+            numerator = framerate.value_numerator
+            denominator = framerate.value_denominator
+            frame_rate_float = numerator / denominator
         if prop == cv2.CAP_PROP_FRAME_WIDTH:
-            return caps.get_structure(0).get_value("width")
+            return structure.get_value("width")
         elif prop == cv2.CAP_PROP_FRAME_HEIGHT:
-            return caps.get_structure(0).get_value("height")
+            return structure.get_value("height")
         elif prop == cv2.CAP_PROP_FPS:
-            return caps.get_structure(0).get_value("framerate")
+            return frame_rate_float
+        elif prop == cv2.CAP_PROP_FRAME_COUNT:
+            duration = self.pipeline.query_duration(Gst.Format.TIME)[1]
+            if duration and duration > 0:
+                return (duration / Gst.SECOND) * (numerator / denominator)
         return None
 
     def isOpened(self):
@@ -88,7 +104,6 @@ class VideoCaptureGst:
     def release(self):
         env.import_optional_package("gi")
         from gi.repository import Gst
-
         self.pipeline.set_state(Gst.State.NULL)
         self.running = False
 
@@ -163,10 +178,12 @@ def open_video_stream(
             else:
                 video_source = pafy.new(video_source).getbest(preftype="mp4").url
 
-    # Check if video_source is a GStreamer pipeline
+    # Check if video source is an instance of gstreamer or cv2
+    stream: Union[VideoCaptureGst, cv2.VideoCapture]
     if isinstance(video_source, str) and ("!" in video_source or "filesrc" in video_source):
         stream = VideoCaptureGst(video_source)
-
+    else:
+        stream = cv2.VideoCapture(video_source)  # type: ignore[arg-type]
     if not stream.isOpened():
         raise Exception(f"Error opening '{video_source}' video stream")
     else:
