@@ -94,8 +94,7 @@ class VideoCaptureGst:
             return frame_rate_float
         elif prop == cv2.CAP_PROP_FRAME_COUNT:
             duration = self.pipeline.query_duration(Gst.Format.TIME)[1]
-            if duration and duration > 0:
-                return (duration / Gst.SECOND) * (numerator / denominator)
+            return (duration / Gst.SECOND) * (numerator / denominator)
         return None
 
     def isOpened(self):
